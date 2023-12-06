@@ -13,6 +13,7 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         requestLocationPermission()
         setupAddPointButton()
         setupRouteButton()
+        setupLongPressGesture()
         view.backgroundColor = .white
     }
 
@@ -22,10 +23,27 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         mapView.delegate = self
         view.addSubview(mapView)
 
-        let initialLocation = CLLocationCoordinate2D(latitude: 60.035351, longitude: 30.228947)
-        let span = MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
-        let region = MKCoordinateRegion(center: initialLocation, span: span)
-        mapView.setRegion(region, animated: true)
+        // Инициализация CLLocationManager
+        let locationManager = CLLocationManager()
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
+
+        // Используйте местоположение пользователя, если доступно, иначе используйте начальное местоположение
+        if let userLocation = locationManager.location?.coordinate {
+            mapView.setCenter(userLocation, animated: true)
+
+            // Опционально, установите регион с нужным масштабом
+            let span = MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+            let region = MKCoordinateRegion(center: userLocation, span: span)
+            mapView.setRegion(region, animated: true)
+        } else {
+            let initialLocation = CLLocationCoordinate2D(latitude: 60.035351, longitude: 30.228947)
+            let span = MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+            let region = MKCoordinateRegion(center: initialLocation, span: span)
+            mapView.setRegion(region, animated: true)
+        }
     }
 
     func requestLocationPermission() {
@@ -34,6 +52,23 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         locationManager.requestWhenInUseAuthorization()
     }
 
+    func setupLongPressGesture() {
+        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        mapView.addGestureRecognizer(longPressGesture)
+    }
+
+    @objc func handleLongPress(_ gestureRecognizer: UILongPressGestureRecognizer) {
+        if gestureRecognizer.state == .began {
+            let touchPoint = gestureRecognizer.location(in: mapView)
+            let coordinate = mapView.convert(touchPoint, toCoordinateFrom: mapView)
+            
+            // Добавьте пин (маркер) на карту
+            addPin(at: coordinate)
+        }
+    }
+
+    
+    
     func addCustomAnnotation(at coordinates: CLLocationCoordinate2D) {
         let customAnnotation = MKPointAnnotation()
         customAnnotation.coordinate = coordinates
